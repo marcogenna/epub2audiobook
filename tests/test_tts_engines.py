@@ -14,10 +14,6 @@ class TestEngineRegistry:
         import epub2audiobook.tts.kokoro_engine  # noqa: F401
         assert "kokoro" in ENGINE_REGISTRY
 
-    def test_piper_engine_registered(self):
-        import epub2audiobook.tts.piper_engine  # noqa: F401
-        assert "piper" in ENGINE_REGISTRY
-
     def test_get_engine_returns_instance(self):
         import epub2audiobook.tts.edge_engine  # noqa: F401
         engine = get_engine("edge")

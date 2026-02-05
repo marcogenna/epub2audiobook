@@ -31,7 +31,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "-e", "--engine",
         default="edge",
-        choices=["edge", "kokoro", "piper"],
+        choices=["edge", "kokoro"],
         help="Motore TTS da usare (default: edge)",
     )
     parser.add_argument(
@@ -69,11 +69,6 @@ def main(argv: list[str] | None = None) -> None:
         "-w", "--work-dir",
         default=None,
         help="Directory per file intermedi (abilita il resume)",
-    )
-    parser.add_argument(
-        "--piper-model",
-        default=None,
-        help="Percorso al modello Piper .onnx (richiesto per engine piper)",
     )
     parser.add_argument(
         "--verbose",
@@ -132,10 +127,6 @@ def main(argv: list[str] | None = None) -> None:
     # Setup engine
     engine = get_engine(args.engine)
 
-    # Pass piper model path if needed
-    if args.engine == "piper" and args.piper_model:
-        engine.model_path = args.piper_model
-
     engine.initialize()
 
     # Build TTS config
@@ -189,10 +180,6 @@ def _import_engines() -> None:
     """Import all engine modules to trigger registration."""
     import epub2audiobook.tts.edge_engine  # noqa: F401
     import epub2audiobook.tts.kokoro_engine  # noqa: F401
-    try:
-        import epub2audiobook.tts.piper_engine  # noqa: F401
-    except ImportError:
-        pass  # piper-tts is optional
 
 
 if __name__ == "__main__":
