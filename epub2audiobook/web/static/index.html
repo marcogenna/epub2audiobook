@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>epub2audiobook</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #f0f2f5;
+            color: #1a1a2e;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 3rem 1rem;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+            padding: 2.5rem;
+            max-width: 480px;
+            width: 100%;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.3rem;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 0.85rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Phases */
+        .phase { display: none; }
+        .phase.active { display: block; }
+
+        /* Drop zone */
+        .drop-zone {
+            border: 2px dashed #d0d0d0;
+            border-radius: 10px;
+            padding: 3rem 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #888;
+        }
+        .drop-zone:hover { border-color: #7c8cf5; color: #7c8cf5; }
+        .drop-zone.dragover {
+            border-color: #7c8cf5;
+            background: #f5f6ff;
+            color: #7c8cf5;
+        }
+        .drop-zone .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .drop-zone p { font-size: 0.9rem; line-height: 1.6; }
+
+        /* Book info */
+        .book-info {
+            background: #f8f9fb;
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+            margin-bottom: 1.5rem;
+            border-left: 4px solid #7c8cf5;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        .book-cover {
+            width: 60px;
+            height: 85px;
+            object-fit: cover;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            flex-shrink: 0;
+        }
+        .book-info-text { flex: 1; min-width: 0; }
+        .book-info .title { font-weight: 600; font-size: 1.05rem; }
+        .book-info .meta { color: #888; font-size: 0.85rem; margin-top: 0.2rem; }
+
+        /* Form */
+        label {
+            display: block;
+            margin-top: 1.2rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #555;
+        }
+        select, input[type="range"] {
+            width: 100%;
+            margin-top: 0.4rem;
+        }
+        select {
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 0.9rem;
+            background: #fff;
+            appearance: auto;
+        }
+        select:focus { outline: none; border-color: #7c8cf5; }
+
+        .speed-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .speed-val {
+            font-variant-numeric: tabular-nums;
+            font-weight: 600;
+            color: #7c8cf5;
+            font-size: 0.9rem;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            height: 6px;
+            border-radius: 3px;
+            background: #e0e0e0;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px; height: 18px;
+            border-radius: 50%;
+            background: #7c8cf5;
+            cursor: pointer;
+        }
+
+        /* Buttons */
+        .btn {
+            display: block;
+            width: 100%;
+            margin-top: 1.8rem;
+            padding: 0.75rem;
+            font-size: 0.95rem;
+            font-weight: 600;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-align: center;
+            text-decoration: none;
+        }
+        .btn-primary { background: #7c8cf5; color: #fff; }
+        .btn-primary:hover { background: #6a7ae8; }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-success { background: #4caf82; color: #fff; }
+        .btn-success:hover { background: #3d9e72; }
+        .btn-ghost {
+            background: transparent;
+            color: #888;
+            margin-top: 0.8rem;
+            font-size: 0.85rem;
+        }
+        .btn-ghost:hover { color: #555; }
+
+        /* Progress */
+        .progress-bar {
+            height: 8px;
+            background: #e8eaef;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 1.2rem 0 0.8rem;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #7c8cf5, #a78bfa);
+            width: 0%;
+            transition: width 0.4s ease;
+            border-radius: 4px;
+        }
+
+        .prog-text {
+            font-size: 0.9rem;
+            color: #555;
+        }
+        .prog-chapter {
+            font-size: 0.8rem;
+            color: #aaa;
+            margin-top: 0.2rem;
+            min-height: 1.2em;
+        }
+
+        .prog-status {
+            text-align: center;
+            padding: 1rem 0;
+        }
+        .prog-status .check { font-size: 2.5rem; margin-bottom: 0.5rem; }
+
+        /* Error */
+        .error {
+            color: #e74c3c;
+            font-size: 0.85rem;
+            margin-top: 0.6rem;
+        }
+
+        /* Loading spinner */
+        .spinner {
+            display: inline-block;
+            width: 14px; height: 14px;
+            border: 2px solid #ccc;
+            border-top-color: #7c8cf5;
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+            margin-right: 0.4rem;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Upload loading overlay */
+        .drop-zone.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>epub2audiobook</h1>
+    <p class="subtitle">Converti libri EPUB in audiobook</p>
+
+    <!-- Phase 1: Upload -->
+    <div id="phase-upload" class="phase active">
+        <div class="drop-zone" id="drop-zone">
+            <div class="icon">📖</div>
+            <p>Trascina qui un file EPUB<br>oppure clicca per selezionare</p>
+            <input type="file" id="file-input" accept=".epub" hidden>
+        </div>
+        <div id="upload-error" class="error"></div>
+    </div>
+
+    <!-- Phase 2: Configure -->
+    <div id="phase-config" class="phase">
+        <div class="book-info">
+            <img id="book-cover" class="book-cover" src="" alt="" hidden>
+            <div class="book-info-text">
+                <div class="title" id="book-title"></div>
+                <div class="meta"><span id="book-author"></span> &mdash; <span id="book-chapters"></span> capitoli</div>
+            </div>
+        </div>
+
+        <label for="sel-engine">Motore TTS</label>
+        <select id="sel-engine"></select>
+
+        <label for="sel-language">Lingua</label>
+        <select id="sel-language">
+            <option value="it">Italiano</option>
+            <option value="en">English</option>
+            <option value="es">Espa&ntilde;ol</option>
+            <option value="fr">Fran&ccedil;ais</option>
+            <option value="de">Deutsch</option>
+        </select>
+
+        <label for="sel-voice">Voce</label>
+        <select id="sel-voice">
+            <option value="">Default</option>
+        </select>
+
+        <label>
+            <span class="speed-row">
+                Velocit&agrave;
+                <span class="speed-val" id="speed-val">1.0x</span>
+            </span>
+        </label>
+        <input type="range" id="inp-speed" min="0.5" max="2.0" step="0.1" value="1.0">
+
+        <button class="btn btn-primary" id="btn-convert">Avvia conversione</button>
+        <div id="config-error" class="error"></div>
+    </div>
+
+    <!-- Phase 3: Progress -->
+    <div id="phase-progress" class="phase">
+        <div class="book-info">
+            <img id="prog-cover" class="book-cover" src="" alt="" hidden>
+            <div class="book-info-text">
+                <div class="title" id="prog-title"></div>
+            </div>
+        </div>
+
+        <div id="prog-active">
+            <div class="progress-bar">
+                <div class="progress-fill" id="prog-fill"></div>
+            </div>
+            <div class="prog-text" id="prog-text"><span class="spinner"></span>Preparazione...</div>
+            <div class="prog-chapter" id="prog-chapter"></div>
+        </div>
+
+        <div id="prog-done" class="prog-status" hidden>
+            <div class="check">&#10003;</div>
+            <p>Conversione completata!</p>
+        </div>
+
+        <a id="btn-download" class="btn btn-success" href="#" hidden>Scarica audiobook</a>
+        <button class="btn btn-ghost" id="btn-new" hidden>Converti un altro libro</button>
+        <div id="prog-error" class="error"></div>
+    </div>
+</div>
+
+<script>
+const $ = (s) => document.querySelector(s);
+
+let jobId = null;
+
+// --- Phase management ---
+function showPhase(name) {
+    document.querySelectorAll('.phase').forEach(p => p.classList.remove('active'));
+    $(`#phase-${name}`).classList.add('active');
+}
+
+// --- Phase 1: Upload ---
+const dropZone = $('#drop-zone');
+const fileInput = $('#file-input');
+
+dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+});
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', () => {
+    if (fileInput.files.length) uploadFile(fileInput.files[0]);
+});
+
+async function uploadFile(file) {
+    $('#upload-error').textContent = '';
+    dropZone.classList.add('loading');
+    dropZone.querySelector('p').innerHTML = '<span class="spinner"></span>Caricamento...';
+
+    const form = new FormData();
+    form.append('file', file);
+
+    try {
+        const res = await fetch('/api/upload', { method: 'POST', body: form });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || res.statusText);
+        }
+        const data = await res.json();
+        jobId = data.job_id;
+
+        $('#book-title').textContent = data.title;
+        $('#book-author').textContent = data.author;
+        $('#book-chapters').textContent = data.chapters;
+
+        // Show cover if available
+        const coverImg = $('#book-cover');
+        if (data.has_cover) {
+            coverImg.src = `/api/cover/${jobId}`;
+            coverImg.hidden = false;
+        } else {
+            coverImg.hidden = true;
+        }
+
+        if (data.language) {
+            const langSel = $('#sel-language');
+            for (const opt of langSel.options) {
+                if (opt.value === data.language.substring(0, 2)) {
+                    langSel.value = opt.value;
+                    break;
+                }
+            }
+        }
+
+        await loadEngines();
+        showPhase('config');
+    } catch (e) {
+        $('#upload-error').textContent = e.message;
+    } finally {
+        dropZone.classList.remove('loading');
+        dropZone.querySelector('p').innerHTML = 'Trascina qui un file EPUB<br>oppure clicca per selezionare';
+    }
+}
+
+// --- Phase 2: Configure ---
+async function loadEngines() {
+    try {
+        const res = await fetch('/api/engines');
+        const data = await res.json();
+        const sel = $('#sel-engine');
+        sel.innerHTML = '';
+        data.engines.forEach(name => {
+            const label = { edge: 'Edge TTS (online)', kokoro: 'Kokoro (offline)', piper: 'Piper (offline)' };
+            sel.innerHTML += `<option value="${name}">${label[name] || name}</option>`;
+        });
+        await loadVoices();
+    } catch (e) {
+        $('#config-error').textContent = 'Errore nel caricamento dei motori TTS';
+    }
+}
+
+async function loadVoices() {
+    const engine = $('#sel-engine').value;
+    const lang = $('#sel-language').value;
+    const sel = $('#sel-voice');
+    sel.innerHTML = '<option value="">Default</option>';
+
+    try {
+        const res = await fetch(`/api/voices?engine=${engine}&language=${lang}`);
+        const data = await res.json();
+        data.voices.forEach(v => {
+            const g = v.gender ? ` (${v.gender})` : '';
+            sel.innerHTML += `<option value="${v.name}">${v.name}${g}</option>`;
+        });
+    } catch (e) {
+        // Voice loading failed, keep default only
+    }
+}
+
+$('#sel-engine').addEventListener('change', loadVoices);
+$('#sel-language').addEventListener('change', loadVoices);
+$('#inp-speed').addEventListener('input', () => {
+    $('#speed-val').textContent = parseFloat($('#inp-speed').value).toFixed(1) + 'x';
+});
+
+$('#btn-convert').addEventListener('click', async () => {
+    $('#config-error').textContent = '';
+    $('#btn-convert').disabled = true;
+
+    try {
+        const body = {
+            engine: $('#sel-engine').value,
+            voice: $('#sel-voice').value,
+            speed: parseFloat($('#inp-speed').value),
+            language: $('#sel-language').value,
+        };
+
+        const res = await fetch(`/api/convert/${jobId}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body),
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || res.statusText);
+        }
+
+        $('#prog-title').textContent = $('#book-title').textContent;
+        // Copy cover to progress phase
+        const progCover = $('#prog-cover');
+        const bookCover = $('#book-cover');
+        if (!bookCover.hidden) {
+            progCover.src = bookCover.src;
+            progCover.hidden = false;
+        } else {
+            progCover.hidden = true;
+        }
+        $('#prog-active').hidden = false;
+        $('#prog-done').hidden = true;
+        $('#btn-download').hidden = true;
+        $('#btn-new').hidden = true;
+        $('#prog-error').textContent = '';
+        $('#prog-fill').style.width = '0%';
+        $('#prog-text').innerHTML = '<span class="spinner"></span>Preparazione...';
+        $('#prog-chapter').textContent = '';
+
+        showPhase('progress');
+        startSSE();
+    } catch (e) {
+        $('#config-error').textContent = e.message;
+        $('#btn-convert').disabled = false;
+    }
+});
+
+// --- Phase 3: Progress (SSE) ---
+function startSSE() {
+    const es = new EventSource(`/api/progress/${jobId}`);
+
+    es.addEventListener('progress', (e) => {
+        const d = JSON.parse(e.data);
+        if (d.total_chapters > 0) {
+            const pct = Math.round((d.current_chapter / d.total_chapters) * 100);
+            $('#prog-fill').style.width = `${pct}%`;
+            $('#prog-text').textContent = `Capitolo ${d.current_chapter} di ${d.total_chapters}`;
+        }
+        if (d.chapter_title) {
+            $('#prog-chapter').textContent = d.chapter_title;
+        }
+    });
+
+    es.addEventListener('done', () => {
+        es.close();
+        $('#prog-fill').style.width = '100%';
+        $('#prog-active').hidden = true;
+        $('#prog-done').hidden = false;
+        $('#btn-download').href = `/api/download/${jobId}`;
+        $('#btn-download').hidden = false;
+        $('#btn-new').hidden = false;
+    });
+
+    es.addEventListener('error', (e) => {
+        es.close();
+        if (e.data) {
+            try {
+                const d = JSON.parse(e.data);
+                $('#prog-error').textContent = `Errore: ${d.error}`;
+            } catch {
+                $('#prog-error').textContent = 'Errore nella conversione';
+            }
+        } else {
+            $('#prog-error').textContent = 'Connessione persa';
+        }
+        $('#btn-new').hidden = false;
+    });
+}
+
+// --- Reset ---
+$('#btn-new').addEventListener('click', () => {
+    jobId = null;
+    fileInput.value = '';
+    $('#btn-convert').disabled = false;
+    $('#book-cover').hidden = true;
+    $('#prog-cover').hidden = true;
+    showPhase('upload');
+});
+</script>
+</body>
+</html>
