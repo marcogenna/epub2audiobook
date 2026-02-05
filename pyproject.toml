@@ -26,7 +26,18 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23", "black", "ruff"]
+
+[project.urls]
+Homepage = "https://github.com/marcogenna/epub2audiobook"
+Repository = "https://github.com/marcogenna/epub2audiobook"
+Issues = "https://github.com/marcogenna/epub2audiobook/issues"
+
+[tool.black]
+line-length = 100
+
+[tool.ruff]
+line-length = 100
 
 [project.scripts]
 epub2audiobook = "epub2audiobook.cli:main"
